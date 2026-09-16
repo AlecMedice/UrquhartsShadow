@@ -4,6 +4,17 @@ The repo contains code, the input asset and package manifest. Scenes, prefabs, m
 audio must be created in the editor. This is the wiring checklist; every serialized field is documented in
 the class headers.
 
+## Fast path: the greybox builder
+**Urquhart's Shadow > Setup > Build Greybox (All)** generates everything below from primitives: the four scenes,
+the Player / Vessel / Nessie / ROV / SonarBeacon / PersistentSystems prefabs (in `Assets/Generated/Prefabs`),
+a 1200 m water mesh with the `LochWater` material, a URP asset if none exists, Build Settings, and the HUD /
+title / ending canvases with their controllers wired. It also makes Nessie's layer ignore the vessel and players
+so all contact is script-driven. Press Play from Bootstrap and choose Solo. The manual steps below are the
+reference for replacing each placeholder with real art; you do not need them to get moving.
+
+Known greybox limits: no animator on Nessie (the body still moves and breaches), no audio clips, the Settings
+panel has only a Back button, and the shore is a ring of boxes.
+
 ## 0. Project
 - Unity 6000.0.x, URP. Open the folder; wait for packages.
 - **Urquhart's Shadow > Setup > Create Config Assets** → `Resources/GameConfig.asset` and `Resources/Difficulty/{Docile,Wary,Cunning,Ancient}.asset`.
@@ -72,8 +83,11 @@ Spawn it in the LochNess scene (in-scene NetworkObject) at depth near a trench.
 - Fog enabled in Lighting settings (WeatherManager overrides density).
 
 ## 7. Water shader
-`OceanSurface` pushes `_WaveHeight` and four `_WaveA.._WaveD` vectors (dir.x, dir.y, steepness, wavelength) to the material.
-Build a Shader Graph that displaces vertices with the same Gerstner formula (`k = 2π/λ`, `c = sqrt(9.81/k)`, `f = k·(dot(d, xz) − c·t)`), plus normal reconstruction, depth-based colour, moon specular and a foam mask. A high-res plane (or clipmap) around the vessel is enough for the loch.
+`Assets/Shaders/LochWater.shader` is a hand-written URP shader using the same Gerstner formula as `OceanSurface`
+(`k = 2π/λ`, `c = sqrt(9.81/k)`, `f = k·(dot(d, xz) − c·t)`), with analytic normals, ripple normal map, depth tint via
+the scene depth texture (enable Depth Texture on the URP asset), moon specular, fresnel and crest foam.
+`OceanSurface` pushes `_WaveHeight` and `_WaveA.._WaveD` each frame. Assign a tiling normal map and a noise texture
+to the material for ripples and foam. A high-res plane around the vessel is enough for the loch; a clipmap is a later upgrade.
 
 ## 8. Difficulty
 The host's selected difficulty (title screen dropdown) is stored in PlayerPrefs and replicated by `GameManager.DifficultyIndex`. Tune profiles in `Resources/Difficulty/*.asset`.

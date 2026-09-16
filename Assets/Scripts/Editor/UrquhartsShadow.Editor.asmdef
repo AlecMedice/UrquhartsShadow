@@ -1,7 +1,14 @@
 {
     "name": "UrquhartsShadow.Editor",
     "rootNamespace": "UrquhartsShadow.Editor",
-    "references": [ "UrquhartsShadow" ],
+    "references": [
+        "UrquhartsShadow",
+        "Unity.Netcode.Runtime",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
+    ],
     "includePlatforms": [ "Editor" ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
