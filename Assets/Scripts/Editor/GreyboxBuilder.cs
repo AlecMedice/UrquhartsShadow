@@ -649,6 +649,12 @@ namespace UrquhartsShadow.Editor
             var toastText = MakeText(toastGo.transform, "Text", "", new Vector2(0.5f, 0.5f), Vector2.zero, 24f, TextAlignmentOptions.Center); toastText.rectTransform.sizeDelta = new Vector2(1000, 60);
             Set(hud, "toastText", toastText); Set(hud, "toastGroup", toastGo.GetComponent<CanvasGroup>());
             var crosshair = MakeText(hudRoot.transform, "Crosshair", "·", new Vector2(0.5f, 0.5f), Vector2.zero, 40f, TextAlignmentOptions.Center);
+            var analog = new GameObject("AnalogOverlay", typeof(RectTransform), typeof(Image)); analog.transform.SetParent(hudRoot.transform, false); Stretch(analog);
+            analog.transform.SetAsFirstSibling();
+            var analogImg = analog.GetComponent<Image>(); analogImg.raycastTarget = false; analogImg.enabled = false;
+            var analogShader = Shader.Find("UrquhartsShadow/AnalogOverlay");
+            if (analogShader != null) { var am = new Material(analogShader); AssetDatabase.CreateAsset(am, $"{Gen}/AnalogOverlay.mat"); analogImg.material = am; }
+            Set(hud, "analogOverlay", analogImg);
             var spec = MakeText(hudRoot.transform, "Spectator", "", new Vector2(0.5f, 1f), new Vector2(0, -20), 24f, TextAlignmentOptions.Center);
             Set(hud, "spectatorPanel", spec.gameObject); Set(hud, "spectatorText", spec);
 

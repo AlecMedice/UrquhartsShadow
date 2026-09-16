@@ -36,6 +36,8 @@ namespace UrquhartsShadow.UI
 
         [Header("Recording")]
         [SerializeField] private GameObject recIndicator;
+        [Tooltip("Stretched Image using the AnalogOverlay shader; shown while any camera feed is active.")]
+        [SerializeField] private Image analogOverlay;
         [SerializeField] private Image clipProgress;
         [SerializeField] private TMP_Text frameQualityText;
 
@@ -98,6 +100,9 @@ namespace UrquhartsShadow.UI
             if (recIndicator) recIndicator.SetActive(rec);
             if (clipProgress) clipProgress.fillAmount = phone != null ? phone.ClipProgress : 0f;
             if (frameQualityText) frameQualityText.text = rec && phone.LastFrameQuality > 0f ? $"SUBJECT IN FRAME  {phone.LastFrameQuality * 100f:0}%" : "";
+
+            bool feedActive = rec || FindSeated<TelephotoCamera>() != null || FindSeated<ROVStation>() != null;
+            if (analogOverlay) analogOverlay.enabled = feedActive;
 
             UpdateStationOverlays();
 
