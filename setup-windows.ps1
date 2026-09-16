@@ -72,7 +72,22 @@ if ($ver) { "m_EditorVersion: $ver`n" | Set-Content "$proj\ProjectSettings\Proje
 function Run-Batch($method, $log) {
     Say "Running $method (log: Logs\$log). This can take a few minutes..."
     $args = @("-batchmode", "-projectPath", "`"$proj`"", "-executeMethod", $method, "-logFile", "`"$proj\Logs\$log`"", "-quit")
-    $p = Start-Process -FilePath $exe -ArgumentList $args -PassThru -Wait
+    $logPath = "$proj\Logs\$log"
+    if (Test-Path $logPath) { Remove-Item $logPath -Force }
+    $p = Start-Process -FilePath $exe -ArgumentList $args -PassThru
+    $started = Get-Date
+    while (-not $p.HasExited) {
+        Start-Sleep -Seconds 15
+        $elapsed = [int]((Get-Date) - $started).TotalSeconds
+        if (Test-Path $logPath) {
+            $size = [int]((Get-Item $logPath).Length / 1KB)
+            $last = (Get-Content $logPath -Tail 1 -ErrorAction SilentlyContinue)
+            if ($last) { $last = $last.Substring(0, [Math]::Min(110, $last.Length)) }
+            Write-Host ("    [{0,4}s] log {1,6} KB | {2}" -f $elapsed, $size, $last)
+        } else {
+            Write-Host ("    [{0,4}s] Unity running (pid {1}), no log file yet..." -f $elapsed, $p.Id)
+        }
+    }
     $text = ""
     if (Test-Path "$proj\Logs\$log") { $text = Get-Content "$proj\Logs\$log" -Raw }
     $errors = ($text -split "`n") | Where-Object { $_ -match "error CS\d+" } | Select-Object -Unique
@@ -81,6 +96,9 @@ function Run-Batch($method, $log) {
         $errors | ForEach-Object { Write-Host "  $_" }
         Write-Host "`nThe project code needs a fix before setup can continue. Give the lines above to Claude." -ForegroundColor Yellow
         Read-Host "Press Enter to exit"; exit 1
+    }
+    if ($text -match "No valid Unity Editor license|License is not valid|Failed to activate") {
+        Fail "Unity has no active license for batch mode. Open Unity Hub, sign in, and make sure a Personal license is active (Hub > Preferences > Licenses), then run this again."
     }
     if ($p.ExitCode -ne 0) {
         Write-Host "Unity exited with code $($p.ExitCode). Check Logs\$log." -ForegroundColor Yellow
