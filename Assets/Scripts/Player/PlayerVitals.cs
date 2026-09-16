@@ -19,6 +19,8 @@ namespace UrquhartsShadow.Player
         public readonly NetworkVariable<bool> InWater = new NetworkVariable<bool>(false);
         public readonly NetworkVariable<bool> Alive = new NetworkVariable<bool>(true);
         public readonly NetworkVariable<float> WaterTimer = new NetworkVariable<float>(0f);
+        /// <summary>Owner-written so the server can charge sprint energy for remote players.</summary>
+        public readonly NetworkVariable<bool> Sprinting = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
         public event Action Died;
         public event Action<float> Damaged;
@@ -47,6 +49,7 @@ namespace UrquhartsShadow.Player
         private void Update()
         {
             if (_shiverTimer > 0f) _shiverTimer -= Time.deltaTime;
+            if (IsOwner && _player.Movement != null && Sprinting.Value != _player.Movement.IsSprinting) Sprinting.Value = _player.Movement.IsSprinting;
             if (!IsServer || !Alive.Value) return;
 
             var cfg = GameConfig.Instance.Player;
@@ -55,7 +58,7 @@ namespace UrquhartsShadow.Player
 
             // Energy
             float drain = cfg.PassiveEnergyDrain * (nightActive ? 1f : 0.2f);
-            if (_player.Movement != null && _player.Movement.IsSprinting) drain += cfg.SprintEnergyDrain;
+            if (Sprinting.Value) drain += cfg.SprintEnergyDrain;
             Energy.Value = Mathf.Max(0f, Energy.Value - drain * Time.deltaTime);
 
             // Water

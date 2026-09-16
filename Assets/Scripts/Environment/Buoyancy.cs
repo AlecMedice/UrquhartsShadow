@@ -1,5 +1,4 @@
 using UnityEngine;
-using UrquhartsShadow.Config;
 
 namespace UrquhartsShadow.Environment
 {
@@ -13,7 +12,8 @@ namespace UrquhartsShadow.Environment
     {
         [Tooltip("Points on the hull that push up when below the surface. Four corners work well.")]
         [SerializeField] private Transform[] floaters;
-        [SerializeField] private float floatStrength = 12f;
+        [Tooltip("Upward force per metre of submersion, as a multiple of the body's weight, split across floaters.")]
+        [SerializeField] private float floatStrength = 1.5f;
         [SerializeField] private float waterDrag = 1.2f;
         [SerializeField] private float waterAngularDrag = 0.8f;
         [SerializeField] private float airDrag = 0.05f;
@@ -43,8 +43,8 @@ namespace UrquhartsShadow.Environment
                 if (depth > 0f)
                 {
                     submerged++;
-                    float force = Mathf.Clamp(depth, 0f, 2f) * floatStrength / floaters.Length;
-                    _rb.AddForceAtPosition(Vector3.up * force * _rb.mass * Physics.gravity.magnitude / floatStrength, f.position, ForceMode.Force);
+                    float force = Mathf.Clamp(depth, 0f, 2f) * floatStrength * _rb.mass * Physics.gravity.magnitude / floaters.Length;
+                    _rb.AddForceAtPosition(Vector3.up * force, f.position, ForceMode.Force);
                 }
             }
             bool inWater = submerged > 0;

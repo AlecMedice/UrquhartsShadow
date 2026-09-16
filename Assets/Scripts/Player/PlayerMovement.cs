@@ -99,7 +99,7 @@ namespace UrquhartsShadow.Player
             _cc.Move((HorizontalVelocity + Vector3.up * _velocity.y) * Time.deltaTime);
         }
 
-        private void Swim(PlayerSettings cfg, InputReader input, OceanSurface ocean)
+        private void Swim(PlayerTuning cfg, InputReader input, OceanSurface ocean)
         {
             _platform = null;
             _grounded = false;

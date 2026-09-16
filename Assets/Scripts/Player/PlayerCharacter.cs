@@ -15,6 +15,7 @@ namespace UrquhartsShadow.Player
     ///   ├─ HandSocket (held tool parent)
     ///   └─ Flashlight (Light)
     /// </summary>
+    [DefaultExecutionOrder(-100)]
     [RequireComponent(typeof(CharacterController))]
     public class PlayerCharacter : NetworkBehaviour
     {
@@ -69,9 +70,10 @@ namespace UrquhartsShadow.Player
             if (playerCamera != null) playerCamera.enabled = owner;
             if (listener != null) listener.enabled = owner;
             if (Input != null) Input.enabled = owner;
-            if (Movement != null) Movement.enabled = owner;
+            // Toggle off then on so OnEnable subscriptions run after every Awake has completed.
+            if (Movement != null) { Movement.enabled = false; Movement.enabled = owner; }
             if (Look != null) Look.enabled = owner;
-            if (Interactor != null) Interactor.enabled = owner;
+            if (Interactor != null) { Interactor.enabled = false; Interactor.enabled = owner; }
             if (Spectator != null) Spectator.enabled = false;
             if (localOnly != null) foreach (var go in localOnly) if (go != null) go.SetActive(owner);
             if (hideForOwner != null && owner) foreach (var r in hideForOwner) if (r != null) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
@@ -81,6 +83,8 @@ namespace UrquhartsShadow.Player
                 Local = this;
                 PlayerName.Value = SettingsStore.PlayerName;
                 Input.FlashlightPressed += ToggleFlashlight;
+                var phone = GetComponentInChildren<PhoneCamera>(true);
+                if (phone != null) phone.Equip();
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
             }

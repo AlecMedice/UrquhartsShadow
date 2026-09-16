@@ -29,18 +29,18 @@ namespace UrquhartsShadow.Config
             }
         }
 
-        public NightSettings Night = new NightSettings();
-        public PlayerSettings Player = new PlayerSettings();
-        public VesselSettings Vessel = new VesselSettings();
-        public EvidenceSettings Evidence = new EvidenceSettings();
-        public ToolSettings Tools = new ToolSettings();
-        public WeatherSettings Weather = new WeatherSettings();
-        public SupplySettings Supplies = new SupplySettings();
-        public AudioSettings Audio = new AudioSettings();
+        public NightTuning Night = new NightTuning();
+        public PlayerTuning Player = new PlayerTuning();
+        public VesselTuning Vessel = new VesselTuning();
+        public EvidenceTuning Evidence = new EvidenceTuning();
+        public ToolTuning Tools = new ToolTuning();
+        public WeatherTuning Weather = new WeatherTuning();
+        public SupplyTuning Supplies = new SupplyTuning();
+        public AudioTuning Audio = new AudioTuning();
     }
 
     [Serializable]
-    public class NightSettings
+    public class NightTuning
     {
         [Tooltip("Real-time length of one night in seconds.")]
         public float NightDurationSeconds = 12f * 60f;
@@ -55,7 +55,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class PlayerSettings
+    public class PlayerTuning
     {
         public float WalkSpeed = 3.2f;
         public float SprintSpeed = 5.5f;
@@ -88,7 +88,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class VesselSettings
+    public class VesselTuning
     {
         public float MaxHullIntegrity = 100f;
         [Tooltip("Hull damage from a single Nessie ram at Normal difficulty (scaled by profile).")]
@@ -112,7 +112,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class EvidenceSettings
+    public class EvidenceTuning
     {
         [Tooltip("Minimum quality (0..1) for a capture to count as evidence at all.")]
         [Range(0f, 1f)] public float MinimumQuality = 0.35f;
@@ -135,7 +135,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class ToolSettings
+    public class ToolTuning
     {
         [Header("Batteries")]
         public float BatteryCapacity = 100f;
@@ -203,7 +203,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class WeatherSettings
+    public class WeatherTuning
     {
         [Tooltip("Probability weights for each night's weather: Clear, Overcast, Rain, Storm.")]
         public float[] WeatherWeights = { 0.35f, 0.3f, 0.2f, 0.15f };
@@ -226,7 +226,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class SupplySettings
+    public class SupplyTuning
     {
         public int StartingBatteries = 8;
         public int BatteriesRestockedPerDawn = 4;
@@ -247,7 +247,7 @@ namespace UrquhartsShadow.Config
     }
 
     [Serializable]
-    public class AudioSettings
+    public class AudioTuning
     {
         public float NessieCallMinInterval = 45f;
         public float NessieCallMaxInterval = 140f;

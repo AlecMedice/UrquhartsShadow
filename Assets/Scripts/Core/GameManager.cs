@@ -12,8 +12,8 @@ namespace UrquhartsShadow.Core
 {
     /// <summary>
     /// Server-authoritative match state machine. Owns the phase, the night counter and the
-    /// win/lose evaluation. Lives on the PersistentSystems prefab as a NetworkObject so it
-    /// survives scene loads; the loch scene systems (NightCycle, Weather, Evidence, Vessel, Nessie)
+    /// win/lose evaluation. Its static Instance is set in Awake so it
+    /// spans the match; it is an in-scene NetworkObject in the LochNess scene, and the other scene systems (NightCycle, Weather, Evidence, Vessel, Nessie)
     /// register themselves with it when they spawn.
     /// </summary>
     public class GameManager : NetworkBehaviour
