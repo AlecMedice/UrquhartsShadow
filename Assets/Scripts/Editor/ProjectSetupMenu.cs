@@ -37,6 +37,47 @@ namespace UrquhartsShadow.Editor
             AssetDatabase.Refresh();
         }
 
+        /// <summary>
+        /// Batch-mode entry for setup-windows.ps1, pass 1: things that need an editor restart to take effect
+        /// (TextMeshPro resources, Input System handling). Pass 2 runs GreyboxBuilder.BuildAll.
+        /// </summary>
+        public static void FirstRunPrepare()
+        {
+            ImportTmpEssentials();
+            SetInputHandlingToBoth();
+            CreateTagsAndLayers();
+            CreateConfigAssets();
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Setup] FirstRunPrepare complete.");
+        }
+
+        [MenuItem("Urquhart's Shadow/Setup/Import TextMeshPro Essentials")]
+        public static void ImportTmpEssentials()
+        {
+            if (Resources.Load("TMP Settings") != null) { Debug.Log("[Setup] TMP essentials already present."); return; }
+            try
+            {
+                TMPro.EditorUtilities.TMP_PackageResourceImporter.ImportResources(true, false, false);
+                AssetDatabase.Refresh();
+                Debug.Log("[Setup] Imported TextMeshPro essential resources.");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[Setup] Could not import TMP essentials automatically: {e.Message}. Use Window > TextMeshPro > Import TMP Essential Resources.");
+            }
+        }
+
+        [MenuItem("Urquhart's Shadow/Setup/Set Input Handling (Both)")]
+        public static void SetInputHandlingToBoth()
+        {
+            var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset");
+            if (assets == null || assets.Length == 0) return;
+            var so = new SerializedObject(assets[0]);
+            var prop = so.FindProperty("activeInputHandler");
+            if (prop == null) { Debug.LogWarning("[Setup] activeInputHandler not found."); return; }
+            if (prop.intValue != 2) { prop.intValue = 2; so.ApplyModifiedPropertiesWithoutUndo(); AssetDatabase.SaveAssets(); Debug.Log("[Setup] Active Input Handling set to Both (restart required)."); }
+        }
+
         [MenuItem("Urquhart's Shadow/Setup/Create Tags And Layers")]
         public static void CreateTagsAndLayers()
         {

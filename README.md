@@ -37,12 +37,16 @@ docs/
   HANDOFF.md   What is done, what is not, and what to build next
 ```
 
-## Quick start
+## Quick start (Windows)
 
-1. Open the folder in Unity 6000.0.x. Packages resolve from `Packages/manifest.json`.
-2. Run **Urquhart's Shadow > Setup > Create Config Assets** and **Create Tags And Layers**.
-3. Follow `docs/SETUP.md` to build the four scenes and the prefabs (there are no binary assets in this repo yet).
-4. Link the project to Unity Gaming Services (Edit > Project Settings > Services) for multiplayer; solo works without it.
+1. Install a Unity 6 editor (6000.0.x LTS) through Unity Hub if you have not already.
+2. Right-click `setup-windows.ps1` > **Run with PowerShell**. It finds your Unity, imports TextMeshPro, builds the
+   greybox scenes and prefabs in batch mode, and opens the editor. First run takes a few minutes.
+3. In the editor open `Assets/Scenes/Bootstrap.unity`, press Play, choose **Solo Expedition**.
+
+Manual equivalent: open the folder in Unity 6, run **Urquhart's Shadow > Setup > Import TextMeshPro Essentials**,
+**Set Input Handling (Both)**, restart, then **Build Greybox (All)**. Multiplayer additionally needs the project
+linked to Unity Gaming Services (Edit > Project Settings > Services); solo works without it.
 
 ## Design in one paragraph
 
