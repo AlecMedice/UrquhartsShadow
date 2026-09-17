@@ -55,16 +55,22 @@ namespace UrquhartsShadow.Editor
         public static void ImportTmpEssentials()
         {
             if (Resources.Load("TMP Settings") != null) { Debug.Log("[Setup] TMP essentials already present."); return; }
-            try
+            // The essentials ship as a .unitypackage inside the uGUI package (Unity 6) or the legacy TMP package.
+            string[] candidates =
             {
-                TMPro.EditorUtilities.TMP_PackageResourceImporter.ImportResources(true, false, false);
+                "Packages/com.unity.ugui/Package Resources/TMP Essential Resources.unitypackage",
+                "Packages/com.unity.textmeshpro/Package Resources/TMP Essential Resources.unitypackage",
+            };
+            foreach (var rel in candidates)
+            {
+                string full = Path.GetFullPath(rel);
+                if (!File.Exists(full)) continue;
+                AssetDatabase.ImportPackage(full, false);
                 AssetDatabase.Refresh();
-                Debug.Log("[Setup] Imported TextMeshPro essential resources.");
+                Debug.Log($"[Setup] Imported TextMeshPro essential resources from {rel}.");
+                return;
             }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[Setup] Could not import TMP essentials automatically: {e.Message}. Use Window > TextMeshPro > Import TMP Essential Resources.");
-            }
+            Debug.LogWarning("[Setup] TMP Essential Resources package not found. Use Window > TextMeshPro > Import TMP Essential Resources.");
         }
 
         [MenuItem("Urquhart's Shadow/Setup/Set Input Handling (Both)")]
