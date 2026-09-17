@@ -37,10 +37,11 @@ docs/
   HANDOFF.md   What is done, what is not, and what to build next
 ```
 
-## Quick start (Windows)
+## Quick start (Windows or macOS)
 
 1. Install a Unity 6 editor (6000.0.x LTS) through Unity Hub if you have not already.
-2. Right-click `setup-windows.ps1` > **Run with PowerShell**. It finds your Unity, imports TextMeshPro, builds the
+2. Windows: right-click `setup-windows.ps1` > **Run with PowerShell**. macOS: open Terminal in the folder and run
+   `bash setup-macos.sh`. Either script finds your Unity, aligns package versions to it, imports TextMeshPro, builds the
    greybox scenes and prefabs in batch mode, and opens the editor. First run takes a few minutes.
 3. In the editor open `Assets/Scenes/Bootstrap.unity`, press Play, choose **Solo Expedition**.
 
