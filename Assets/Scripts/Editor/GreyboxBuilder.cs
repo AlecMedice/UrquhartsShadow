@@ -443,7 +443,10 @@ namespace UrquhartsShadow.Editor
             var tension = go.AddComponent<AudioSource>(); tension.loop = true; tension.playOnAwake = false;
             var stinger = go.AddComponent<AudioSource>(); stinger.playOnAwake = false;
             Set(am, "ambientLayer", ambient); Set(am, "tensionLayer", tension); Set(am, "stingerSource", stinger);
-            return SavePrefab(go, "PersistentSystems");
+            Directory.CreateDirectory("Assets/Resources");
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, "Assets/Resources/PersistentSystems.prefab");
+            Object.DestroyImmediate(go);
+            return prefab;
         }
 
         /// <summary>NGO's prefab list API has shifted between versions; use reflection and fall back to a clear message.</summary>

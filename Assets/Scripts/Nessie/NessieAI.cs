@@ -17,7 +17,9 @@ namespace UrquhartsShadow.Nessie
     [RequireComponent(typeof(NessieBody))]
     public class NessieAI : NetworkBehaviour
     {
-        public static NessieAI Instance { get; private set; }
+        private static NessieAI _instance;
+        /// <summary>Returns a real null when the instance was destroyed (a stale static after Play, a scene unload).</summary>
+        public static NessieAI Instance { get => _instance != null ? _instance : null; private set => _instance = value; }
 
         [Tooltip("Optional override; otherwise GameManager's selected difficulty profile is used.")]
         [SerializeField] private NessieDifficultyProfile profileOverride;

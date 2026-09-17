@@ -21,7 +21,9 @@ namespace UrquhartsShadow.Networking
     /// </summary>
     public class SessionManager : MonoBehaviour
     {
-        public static SessionManager Instance { get; private set; }
+        private static SessionManager _instance;
+        /// <summary>Returns a real null when the instance was destroyed (a stale static after Play, a scene unload).</summary>
+        public static SessionManager Instance { get => _instance != null ? _instance : null; private set => _instance = value; }
 
         public enum Status { Offline, Initialising, Hosting, Joining, InSession, Error }
         public Status State { get; private set; } = Status.Offline;
@@ -42,6 +44,18 @@ namespace UrquhartsShadow.Networking
 
         private void Set(Status s) { State = s; StatusChanged?.Invoke(s); }
 
+        private NetworkManager Net
+        {
+            get
+            {
+                var nm = NetworkManager.Singleton;
+                if (nm == null) nm = GetComponent<NetworkManager>();
+                if (nm == null) nm = FindFirstObjectByType<NetworkManager>();
+                if (nm == null) { LastError = "No NetworkManager in the scene (PersistentSystems missing)."; Debug.LogError("[Session] " + LastError); Set(Status.Error); }
+                return nm;
+            }
+        }
+
         private async Task EnsureServices()
         {
             if (UnityServices.State == ServicesInitializationState.Uninitialized)
@@ -55,13 +69,15 @@ namespace UrquhartsShadow.Networking
         {
             IsSolo = true;
             JoinCode = null;
-            var utp = NetworkManager.Singleton.GetComponent<UnityTransport>();
+            var nm = Net;
+            if (nm == null) return;
+            var utp = nm.GetComponent<UnityTransport>();
             if (utp != null) utp.SetConnectionData("127.0.0.1", 7777);
-            HookSceneLoaded();
-            if (NetworkManager.Singleton.StartHost())
+            if (nm.StartHost())
             {
+                HookSceneLoaded();
                 Set(Status.InSession);
-                NetworkManager.Singleton.SceneManager.LoadScene(GameConstants.SceneLoch, LoadSceneMode.Single);
+                nm.SceneManager.LoadScene(GameConstants.SceneLoch, LoadSceneMode.Single);
             }
             else { LastError = "Failed to start local host"; Set(Status.Error); }
         }
@@ -88,7 +104,9 @@ namespace UrquhartsShadow.Networking
                 HookSceneLoaded();
                 Set(Status.InSession);
                 // WithRelayNetwork() configures the transport and starts the host through NGO's session integration.
-                NetworkManager.Singleton.SceneManager.LoadScene(GameConstants.SceneLoch, LoadSceneMode.Single);
+                var nm = Net; if (nm == null) return;
+                if (!nm.IsListening) nm.StartHost();
+                nm.SceneManager.LoadScene(GameConstants.SceneLoch, LoadSceneMode.Single);
             }
             catch (Exception e)
             {
@@ -118,13 +136,15 @@ namespace UrquhartsShadow.Networking
 
         private void HookSceneLoaded()
         {
-            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLoadCompleted;
-            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLoadCompleted;
+            var nm = Net; if (nm == null || nm.SceneManager == null) return;
+            nm.SceneManager.OnLoadEventCompleted -= OnLoadCompleted;
+            nm.SceneManager.OnLoadEventCompleted += OnLoadCompleted;
         }
 
         private void OnLoadCompleted(string sceneName, LoadSceneMode mode, System.Collections.Generic.List<ulong> done, System.Collections.Generic.List<ulong> timedOut)
         {
-            if (sceneName != GameConstants.SceneLoch || !NetworkManager.Singleton.IsServer) return;
+            var nm = Net; if (nm == null) return;
+            if (sceneName != GameConstants.SceneLoch || !nm.IsServer) return;
             // Give scene NetworkObjects a frame to register with GameManager, then start night 1.
             StartCoroutine(BeginAfterFrame());
         }
@@ -139,16 +159,16 @@ namespace UrquhartsShadow.Networking
         /// <summary>Host only: lobby "Start expedition" when players are gathered. Currently we load the loch immediately on host; keep for a lobby scene.</summary>
         public void StartExpeditionFromLobby()
         {
-            if (!NetworkManager.Singleton.IsServer) return;
-            NetworkManager.Singleton.SceneManager.LoadScene(GameConstants.SceneLoch, LoadSceneMode.Single);
+            var nm = Net; if (nm == null || !nm.IsServer) return;
+            nm.SceneManager.LoadScene(GameConstants.SceneLoch, LoadSceneMode.Single);
         }
 
         // ---------------- Ending / leaving ----------------
         public void LoadEndingScene(MatchSummary summary)
         {
             _lastSummary = summary;
-            if (NetworkManager.Singleton.IsServer)
-                NetworkManager.Singleton.SceneManager.LoadScene(GameConstants.SceneEnding, LoadSceneMode.Single);
+            var nm = Net;
+            if (nm != null && nm.IsServer) nm.SceneManager.LoadScene(GameConstants.SceneEnding, LoadSceneMode.Single);
         }
 
         public async void Leave()
@@ -158,8 +178,8 @@ namespace UrquhartsShadow.Networking
                 if (_session != null) { await _session.LeaveAsync(); _session = null; }
             }
             catch (Exception e) { Debug.LogWarning(e.Message); }
-            if (NetworkManager.Singleton != null && (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer))
-                NetworkManager.Singleton.Shutdown();
+            var nm = NetworkManager.Singleton;
+            if (nm != null && (nm.IsClient || nm.IsServer)) nm.Shutdown();
             JoinCode = null;
             Set(Status.Offline);
             Cursor.lockState = CursorLockMode.None; Cursor.visible = true;

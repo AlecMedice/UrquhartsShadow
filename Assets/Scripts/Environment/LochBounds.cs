@@ -9,7 +9,9 @@ namespace UrquhartsShadow.Environment
     /// </summary>
     public class LochBounds : MonoBehaviour
     {
-        public static LochBounds Instance { get; private set; }
+        private static LochBounds _instance;
+        /// <summary>Returns a real null when the instance was destroyed (a stale static after Play, a scene unload).</summary>
+        public static LochBounds Instance { get => _instance != null ? _instance : null; private set => _instance = value; }
 
         [SerializeField] private Transform[] trenchNodes;
         [SerializeField] private float lochFloorDepth = 220f;

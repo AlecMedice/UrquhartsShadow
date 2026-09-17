@@ -18,7 +18,9 @@ namespace UrquhartsShadow.Core
     /// </summary>
     public class GameManager : NetworkBehaviour
     {
-        public static GameManager Instance { get; private set; }
+        private static GameManager _instance;
+        /// <summary>Returns a real null when the instance was destroyed (a stale static after Play, a scene unload).</summary>
+        public static GameManager Instance { get => _instance != null ? _instance : null; private set => _instance = value; }
 
         public readonly NetworkVariable<GamePhase> Phase = new NetworkVariable<GamePhase>(GamePhase.Title);
         public readonly NetworkVariable<int> CurrentNight = new NetworkVariable<int>(0);

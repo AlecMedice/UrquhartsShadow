@@ -12,7 +12,9 @@ namespace UrquhartsShadow.Audio
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
-        public static AudioManager Instance { get; private set; }
+        private static AudioManager _instance;
+        /// <summary>Returns a real null when the instance was destroyed (a stale static after Play, a scene unload).</summary>
+        public static AudioManager Instance { get => _instance != null ? _instance : null; private set => _instance = value; }
 
         [Header("Music layers")]
         [SerializeField] private AudioSource ambientLayer;

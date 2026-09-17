@@ -11,7 +11,9 @@ namespace UrquhartsShadow.Environment
     [ExecuteAlways]
     public class OceanSurface : MonoBehaviour
     {
-        public static OceanSurface Instance { get; private set; }
+        private static OceanSurface _instance;
+        /// <summary>Returns a real null when the instance was destroyed (a stale static after Play, a scene unload).</summary>
+        public static OceanSurface Instance { get => _instance != null ? _instance : null; private set => _instance = value; }
 
         [Tooltip("Overall wave height (metres). Set by WeatherManager.")]
         public float WaveHeight = 0.4f;

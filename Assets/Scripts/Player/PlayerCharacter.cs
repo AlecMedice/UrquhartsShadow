@@ -19,7 +19,8 @@ namespace UrquhartsShadow.Player
     [RequireComponent(typeof(CharacterController))]
     public class PlayerCharacter : NetworkBehaviour
     {
-        public static PlayerCharacter Local { get; private set; }
+        private static PlayerCharacter _local;
+        public static PlayerCharacter Local { get => _local != null ? _local : null; private set => _local = value; }
 
         [Header("Wiring")]
         [SerializeField] private Camera playerCamera;
