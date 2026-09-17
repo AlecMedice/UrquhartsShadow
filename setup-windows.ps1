@@ -71,7 +71,7 @@ if (-not $unity) {
 if ($unity -is [string]) { $exe = $unity; $ver = "" } else { $exe = $unity.Exe; $ver = $unity.Version }
 Say "Using Unity $ver at $exe"
 if ($ver -and $ver -notlike "6000.*") { Write-Host "WARNING: this project targets Unity 6 (6000.x). $ver may not compile." -ForegroundColor Yellow }
-if ($ver) { "m_EditorVersion: $ver`n" | Set-Content "$proj\ProjectSettings\ProjectVersion.txt" -NoNewline }
+if ($ver) { [System.IO.File]::WriteAllText("$proj\ProjectSettings\ProjectVersion.txt", "m_EditorVersion: $ver`n", (New-Object System.Text.UTF8Encoding($false))) }
 
 # ---------- 2b. Align package versions with this editor ----------
 # Unity 6 pins the render pipeline and several core packages to the editor version. Take those versions from the
@@ -139,7 +139,9 @@ function Sync-Manifest($editorExe) {
     foreach ($n in @("com.unity.transport", "com.unity.services.authentication")) { if ($merged.Contains($n)) { $merged.Remove($n) } }
 
     $out = [ordered]@{ dependencies = $merged }
-    ($out | ConvertTo-Json -Depth 5) | Set-Content "$proj\Packages\manifest.json" -Encoding UTF8
+    # Write UTF-8 WITHOUT a byte-order mark: Unity's JSON parser rejects the BOM that Set-Content -Encoding UTF8 adds.
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText("$proj\Packages\manifest.json", (($out | ConvertTo-Json -Depth 5) + "`n"), $utf8NoBom)
     Remove-Item "$proj\Packages\packages-lock.json" -Force -ErrorAction SilentlyContinue
     Write-Host "  Final Packages\manifest.json:"
     $merged.GetEnumerator() | ForEach-Object { Write-Host ("    {0,-48} {1}" -f $_.Key, $_.Value) }
