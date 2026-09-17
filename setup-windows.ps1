@@ -68,10 +68,42 @@ Say "Using Unity $ver at $exe"
 if ($ver -and $ver -notlike "6000.*") { Write-Host "WARNING: this project targets Unity 6 (6000.x). $ver may not compile." -ForegroundColor Yellow }
 if ($ver) { "m_EditorVersion: $ver`n" | Set-Content "$proj\ProjectSettings\ProjectVersion.txt" -NoNewline }
 
+# ---------- 2b. Align package versions with this editor ----------
+# Unity 6 pins the render pipeline and several core packages to the editor version. Take those versions from the
+# URP project template that ships inside this editor and merge our extra packages (Netcode, Services, etc.) on top.
+function Sync-Manifest($editorExe) {
+    $editorDir = Split-Path -Parent $editorExe
+    $tplDir = Join-Path $editorDir "Data\Resources\PackageManager\ProjectTemplates"
+    $tpl = $null
+    if (Test-Path $tplDir) {
+        $tpl = Get-ChildItem $tplDir -Filter "com.unity.template.universal-3d*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $tpl) { $tpl = Get-ChildItem $tplDir -Filter "com.unity.template.urp*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1 }
+        if (-not $tpl) { $tpl = Get-ChildItem $tplDir -Filter "com.unity.template.universal*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1 }
+    }
+    if (-not $tpl) { Write-Host "  (no URP template found in this editor; keeping Packages\manifest.json as is)" -ForegroundColor Yellow; return }
+    $tmp = Join-Path $env:TEMP "urquhart_template"
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    & tar -xzf $tpl.FullName -C $tmp 2>$null
+    $tplManifest = Get-ChildItem $tmp -Recurse -Filter manifest.json -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $tplManifest) { Write-Host "  (template manifest not found; keeping manifest as is)" -ForegroundColor Yellow; return }
+    $tplJson = Get-Content $tplManifest.FullName -Raw | ConvertFrom-Json
+    $ours = Get-Content "$proj\Packages\manifest.json" -Raw | ConvertFrom-Json
+    $merged = [ordered]@{}
+    foreach ($d in $tplJson.dependencies.PSObject.Properties) { $merged[$d.Name] = $d.Value }
+    foreach ($d in $ours.dependencies.PSObject.Properties) { if (-not $merged.Contains($d.Name)) { $merged[$d.Name] = $d.Value } }
+    $out = [ordered]@{ dependencies = $merged }
+    ($out | ConvertTo-Json -Depth 5) | Set-Content "$proj\Packages\manifest.json" -Encoding UTF8
+    Remove-Item "$proj\Packages\packages-lock.json" -Force -ErrorAction SilentlyContinue
+    Write-Host "  Package versions aligned with $($tpl.Name)."
+}
+Say "Aligning package versions with Unity $ver"
+Sync-Manifest $exe
+
 # ---------- 3/4. Batch passes ----------
 function Run-Batch($method, $log) {
     Say "Running $method (log: Logs\$log). This can take a few minutes..."
-    $args = @("-batchmode", "-projectPath", "`"$proj`"", "-executeMethod", $method, "-logFile", "`"$proj\Logs\$log`"", "-quit")
+    $args = @("-batchmode", "-accept-apiupdate", "-projectPath", "`"$proj`"", "-executeMethod", $method, "-logFile", "`"$proj\Logs\$log`"", "-quit")
     $logPath = "$proj\Logs\$log"
     if (Test-Path $logPath) { Remove-Item $logPath -Force }
     $p = Start-Process -FilePath $exe -ArgumentList $args -PassThru
