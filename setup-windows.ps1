@@ -53,6 +53,11 @@ function Find-Unity {
             }
         }
     }
+    # Prefer the LTS streams (6000.3, then 6000.0), then the highest other Unity 6 build.
+    foreach ($stream in @("6000.3.*", "6000.0.*")) {
+        $lts = $candidates | Where-Object { $_.Version -like $stream } | Sort-Object Version -Descending
+        if ($lts) { return $lts[0] }
+    }
     $six = $candidates | Where-Object { $_.Version -like "6000.*" } | Sort-Object Version -Descending
     if ($six) { return $six[0] }
     if ($candidates) { return ($candidates | Sort-Object Version -Descending)[0] }
@@ -71,31 +76,73 @@ if ($ver) { "m_EditorVersion: $ver`n" | Set-Content "$proj\ProjectSettings\Proje
 # ---------- 2b. Align package versions with this editor ----------
 # Unity 6 pins the render pipeline and several core packages to the editor version. Take those versions from the
 # URP project template that ships inside this editor and merge our extra packages (Netcode, Services, etc.) on top.
+function Get-RegistryLatest($name) {
+    try {
+        $json = Invoke-RestMethod -Uri "https://packages.unity.com/$name" -TimeoutSec 40
+        $versions = @($json.versions.PSObject.Properties.Name | Where-Object { $_ -notmatch "-(pre|exp|preview|rc)" })
+        if (-not $versions) { return $null }
+        $sorted = $versions | Sort-Object { [version]($_ -replace '[^\d.].*$', '') } -Descending
+        return $sorted[0]
+    } catch { return $null }
+}
+
 function Sync-Manifest($editorExe) {
     $editorDir = Split-Path -Parent $editorExe
+    $ours = Get-Content "$proj\Packages\manifest.json" -Raw | ConvertFrom-Json
+    $merged = [ordered]@{}
+    foreach ($d in $ours.dependencies.PSObject.Properties) { $merged[$d.Name] = $d.Value }
+
+    # Source 1: the URP project template shipped with this editor (render pipeline + core package versions).
     $tplDir = Join-Path $editorDir "Data\Resources\PackageManager\ProjectTemplates"
     $tpl = $null
     if (Test-Path $tplDir) {
-        $tpl = Get-ChildItem $tplDir -Filter "com.unity.template.universal-3d*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1
-        if (-not $tpl) { $tpl = Get-ChildItem $tplDir -Filter "com.unity.template.urp*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1 }
-        if (-not $tpl) { $tpl = Get-ChildItem $tplDir -Filter "com.unity.template.universal*.tgz" -ErrorAction SilentlyContinue | Select-Object -First 1 }
+        foreach ($pat in @("com.unity.template.universal-3d*.tgz", "com.unity.template.urp*.tgz", "com.unity.template.universal*.tgz", "com.unity.template.3d*.tgz")) {
+            $tpl = Get-ChildItem $tplDir -Filter $pat -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($tpl) { break }
+        }
     }
-    if (-not $tpl) { Write-Host "  (no URP template found in this editor; keeping Packages\manifest.json as is)" -ForegroundColor Yellow; return }
-    $tmp = Join-Path $env:TEMP "urquhart_template"
-    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $tmp | Out-Null
-    & tar -xzf $tpl.FullName -C $tmp 2>$null
-    $tplManifest = Get-ChildItem $tmp -Recurse -Filter manifest.json -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $tplManifest) { Write-Host "  (template manifest not found; keeping manifest as is)" -ForegroundColor Yellow; return }
-    $tplJson = Get-Content $tplManifest.FullName -Raw | ConvertFrom-Json
-    $ours = Get-Content "$proj\Packages\manifest.json" -Raw | ConvertFrom-Json
-    $merged = [ordered]@{}
-    foreach ($d in $tplJson.dependencies.PSObject.Properties) { $merged[$d.Name] = $d.Value }
-    foreach ($d in $ours.dependencies.PSObject.Properties) { if (-not $merged.Contains($d.Name)) { $merged[$d.Name] = $d.Value } }
+    if ($tpl) {
+        $tmp = Join-Path $env:TEMP "urquhart_template"
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $tmp | Out-Null
+        & tar -xzf $tpl.FullName -C $tmp 2>$null
+        $tplManifest = Get-ChildItem $tmp -Recurse -Filter manifest.json -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($tplManifest) {
+            $tplJson = Get-Content $tplManifest.FullName -Raw | ConvertFrom-Json
+            foreach ($d in $tplJson.dependencies.PSObject.Properties) { $merged[$d.Name] = $d.Value }
+            Write-Host "  Template: $($tpl.Name)"
+        }
+    } else { Write-Host "  (no project template found in this editor)" -ForegroundColor Yellow }
+
+    # Source 2: packages bundled inside the editor (exact versions built for this editor).
+    $cacheDir = Join-Path $editorDir "Data\Resources\PackageManager\Editor"
+    $bundled = 0
+    if (Test-Path $cacheDir) {
+        Get-ChildItem $cacheDir -Filter "*.tgz" -ErrorAction SilentlyContinue | ForEach-Object {
+            if ($_.Name -match '^(com\.unity\.[a-z0-9.\-]+?)[@-](\d+\.\d+\.\d+[^\\/]*?)\.tgz$') {
+                $n = $matches[1]; $v = $matches[2]
+                if ($merged.Contains($n)) { $merged[$n] = $v; $bundled++ }
+            }
+        }
+    }
+    Write-Host "  Bundled package versions applied: $bundled"
+
+    # Source 3: newest stable release from the Unity registry for packages the editor does not bundle.
+    foreach ($n in @("com.unity.netcode.gameobjects", "com.unity.services.multiplayer", "com.unity.inputsystem", "com.unity.ai.navigation", "com.unity.timeline")) {
+        if (-not $merged.Contains($n)) { continue }
+        $isBundled = (Test-Path $cacheDir) -and ((Get-ChildItem $cacheDir -Filter "$n*.tgz" -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0)
+        if ($isBundled) { continue }
+        $latest = Get-RegistryLatest $n
+        if ($latest) { $merged[$n] = $latest; Write-Host "  Registry: $n -> $latest" } else { Write-Host "  (could not query registry for $n; keeping $($merged[$n]))" -ForegroundColor Yellow }
+    }
+    # Transitive dependencies: let the parent package pick the matching version.
+    foreach ($n in @("com.unity.transport", "com.unity.services.authentication")) { if ($merged.Contains($n)) { $merged.Remove($n) } }
+
     $out = [ordered]@{ dependencies = $merged }
     ($out | ConvertTo-Json -Depth 5) | Set-Content "$proj\Packages\manifest.json" -Encoding UTF8
     Remove-Item "$proj\Packages\packages-lock.json" -Force -ErrorAction SilentlyContinue
-    Write-Host "  Package versions aligned with $($tpl.Name)."
+    Write-Host "  Final Packages\manifest.json:"
+    $merged.GetEnumerator() | ForEach-Object { Write-Host ("    {0,-48} {1}" -f $_.Key, $_.Value) }
 }
 Say "Aligning package versions with Unity $ver"
 Sync-Manifest $exe
@@ -124,9 +171,14 @@ function Run-Batch($method, $log) {
     if (Test-Path "$proj\Logs\$log") { $text = Get-Content "$proj\Logs\$log" -Raw }
     $errors = ($text -split "`n") | Where-Object { $_ -match "error CS\d+" } | Select-Object -Unique
     if ($errors) {
-        Write-Host "`nC# compile errors found:" -ForegroundColor Red
-        $errors | ForEach-Object { Write-Host "  $_" }
-        Write-Host "`nThe project code needs a fix before setup can continue. Give the lines above to Claude." -ForegroundColor Yellow
+        $ownErrors = @($errors | Where-Object { $_ -notmatch "PackageCache" })
+        $pkgErrors = @($errors | Where-Object { $_ -match "PackageCache" })
+        Write-Host "`nC# compile errors found: $($ownErrors.Count) in project code, $($pkgErrors.Count) in Unity packages." -ForegroundColor Red
+        if ($ownErrors.Count -gt 0) { Write-Host "`nProject code errors (give these to Claude):" -ForegroundColor Yellow; $ownErrors | Select-Object -First 60 | ForEach-Object { Write-Host "  $_" } }
+        if ($pkgErrors.Count -gt 0) {
+            Write-Host "`nPackage errors (first 5):" -ForegroundColor Yellow; $pkgErrors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
+            Write-Host "`nUnity's own packages do not compile on this editor version ($ver). The most reliable fix is to install Unity 6000.3 LTS in Unity Hub and run this script again; it prefers LTS automatically." -ForegroundColor Yellow
+        }
         Read-Host "Press Enter to exit"; exit 1
     }
     if ($text -match "No valid Unity Editor license|License is not valid|Failed to activate") {
