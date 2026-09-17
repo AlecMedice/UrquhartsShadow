@@ -41,6 +41,9 @@ namespace UrquhartsShadow.Editor
         [MenuItem("Urquhart's Shadow/Setup/Build Greybox (All)")]
         public static void BuildAll()
         {
+            if (EditorApplication.isPlaying) { Debug.LogError("[Greybox] Stop play mode first, then run Build Greybox again."); return; }
+            if (Resources.Load("TMP Settings") == null)
+                Debug.LogWarning("[Greybox] TextMeshPro essentials are not imported yet; UI text may be blank until you run Setup > Import TextMeshPro Essentials and rebuild.");
             ProjectSetupMenu.CreateConfigAssets();
             ProjectSetupMenu.CreateTagsAndLayers();
             Directory.CreateDirectory(Gen); Directory.CreateDirectory(Prefabs); Directory.CreateDirectory(Scenes);

@@ -133,10 +133,11 @@ PY
 
 # ---------- 4/5. Batch passes ----------
 run_batch() {
-  local method="$1" log="$2" logpath="$PROJ/Logs/$2"
+  local method="$1" log="$2" quit="${3:-yes}" logpath="$PROJ/Logs/$2"
   say "Running $method (log: Logs/$log). This can take a few minutes..."
   rm -f "$logpath"
-  "$UNITY_BIN" -batchmode -accept-apiupdate -projectPath "$PROJ" -executeMethod "$method" -logFile "$logpath" -quit &
+  local extra=(); [ "$quit" = "yes" ] && extra=(-quit)
+  "$UNITY_BIN" -batchmode -accept-apiupdate -projectPath "$PROJ" -executeMethod "$method" -logFile "$logpath" "${extra[@]}" &
   local pid=$! start=$(date +%s)
   while kill -0 "$pid" 2>/dev/null; do
     sleep 15
@@ -169,7 +170,7 @@ run_batch() {
   return 0
 }
 
-run_batch "UrquhartsShadow.Editor.ProjectSetupMenu.FirstRunPrepare" "setup-pass1.log"
+run_batch "UrquhartsShadow.Editor.ProjectSetupMenu.FirstRunPrepare" "setup-pass1.log" no
 run_batch "UrquhartsShadow.Editor.GreyboxBuilder.BuildAll" "setup-pass2.log"
 
 [ -f "$PROJ/Assets/Scenes/Bootstrap.unity" ] || warn "Greybox scenes were not created. Open the project and run Urquhart's Shadow > Setup > Build Greybox (All), or check Logs/setup-pass2.log."

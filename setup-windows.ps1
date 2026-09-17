@@ -150,9 +150,10 @@ Say "Aligning package versions with Unity $ver"
 Sync-Manifest $exe
 
 # ---------- 3/4. Batch passes ----------
-function Run-Batch($method, $log) {
+function Run-Batch($method, $log, $quit = $true) {
     Say "Running $method (log: Logs\$log). This can take a few minutes..."
-    $args = @("-batchmode", "-accept-apiupdate", "-projectPath", "`"$proj`"", "-executeMethod", $method, "-logFile", "`"$proj\Logs\$log`"", "-quit")
+    $args = @("-batchmode", "-accept-apiupdate", "-projectPath", "`"$proj`"", "-executeMethod", $method, "-logFile", "`"$proj\Logs\$log`"")
+    if ($quit) { $args += "-quit" }
     $logPath = "$proj\Logs\$log"
     if (Test-Path $logPath) { Remove-Item $logPath -Force }
     $p = Start-Process -FilePath $exe -ArgumentList $args -PassThru
@@ -191,7 +192,7 @@ function Run-Batch($method, $log) {
     }
 }
 
-Run-Batch "UrquhartsShadow.Editor.ProjectSetupMenu.FirstRunPrepare" "setup-pass1.log"
+Run-Batch "UrquhartsShadow.Editor.ProjectSetupMenu.FirstRunPrepare" "setup-pass1.log" $false
 Run-Batch "UrquhartsShadow.Editor.GreyboxBuilder.BuildAll" "setup-pass2.log"
 
 if (-not (Test-Path "$proj\Assets\Scenes\Bootstrap.unity")) {

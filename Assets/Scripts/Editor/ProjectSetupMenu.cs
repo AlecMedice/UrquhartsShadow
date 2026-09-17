@@ -43,18 +43,35 @@ namespace UrquhartsShadow.Editor
         /// </summary>
         public static void FirstRunPrepare()
         {
-            ImportTmpEssentials();
+            if (EditorApplication.isPlaying) { Debug.LogError("[Setup] Stop play mode first."); return; }
             SetInputHandlingToBoth();
             CreateTagsAndLayers();
             CreateConfigAssets();
             AssetDatabase.SaveAssets();
-            Debug.Log("[Setup] FirstRunPrepare complete.");
+            // The TMP import is asynchronous; in batch mode we must keep the editor alive until it completes,
+            // so this method does not rely on -quit. It exits the editor itself once the import is done (or times out).
+            bool started = ImportTmpEssentials();
+            if (!Application.isBatchMode) return;
+            if (!started) { Debug.Log("[Setup] FirstRunPrepare complete."); EditorApplication.Exit(0); return; }
+            double deadline = EditorApplication.timeSinceStartup + 180.0;
+            void Finish(string why)
+            {
+                Debug.Log($"[Setup] FirstRunPrepare complete ({why}).");
+                AssetDatabase.SaveAssets();
+                EditorApplication.Exit(0);
+            }
+            AssetDatabase.importPackageCompleted += _ => Finish("TMP import completed");
+            AssetDatabase.importPackageFailed += (_, msg) => Finish("TMP import failed: " + msg);
+            AssetDatabase.importPackageCancelled += _ => Finish("TMP import cancelled");
+            EditorApplication.update += () => { if (EditorApplication.timeSinceStartup > deadline) Finish("timeout waiting for TMP import"); };
         }
 
         [MenuItem("Urquhart's Shadow/Setup/Import TextMeshPro Essentials")]
-        public static void ImportTmpEssentials()
+        /// <summary>Returns true when an asynchronous import was started.</summary>
+        public static bool ImportTmpEssentials()
         {
-            if (Resources.Load("TMP Settings") != null) { Debug.Log("[Setup] TMP essentials already present."); return; }
+            if (Resources.Load("TMP Settings") != null) { Debug.Log("[Setup] TMP essentials already present."); return false; }
+            if (EditorApplication.isPlaying) { Debug.LogError("[Setup] Stop play mode first."); return false; }
             // The essentials ship as a .unitypackage inside the uGUI package (Unity 6) or the legacy TMP package.
             string[] candidates =
             {
@@ -66,11 +83,11 @@ namespace UrquhartsShadow.Editor
                 string full = Path.GetFullPath(rel);
                 if (!File.Exists(full)) continue;
                 AssetDatabase.ImportPackage(full, false);
-                AssetDatabase.Refresh();
-                Debug.Log($"[Setup] Imported TextMeshPro essential resources from {rel}.");
-                return;
+                Debug.Log($"[Setup] Importing TextMeshPro essential resources from {rel}...");
+                return true;
             }
             Debug.LogWarning("[Setup] TMP Essential Resources package not found. Use Window > TextMeshPro > Import TMP Essential Resources.");
+            return false;
         }
 
         [MenuItem("Urquhart's Shadow/Setup/Set Input Handling (Both)")]
