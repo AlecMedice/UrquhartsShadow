@@ -4,6 +4,7 @@
     "references": [
         "Unity.Netcode.Runtime",
         "Unity.Collections",
+        "Unity.Networking.Transport",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "Unity.Services.Core",
