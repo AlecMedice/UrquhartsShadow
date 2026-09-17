@@ -3,7 +3,7 @@
     "rootNamespace": "UrquhartsShadow",
     "references": [
         "Unity.Netcode.Runtime",
-        "Unity.Networking.Transport",
+        "Unity.Collections",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "Unity.Services.Core",
